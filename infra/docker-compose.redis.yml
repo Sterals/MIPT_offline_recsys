@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-recsys_redis_pass} --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-recsys_redis_pass}", "ping"]
+      interval: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - recsys
+
+volumes:
+  redis-data:
+
+networks:
+  recsys:
+    name: recsys
+    driver: bridge

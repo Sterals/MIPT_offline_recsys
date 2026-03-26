@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  recs-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: recsys_redis_pass
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - recsys
+
+networks:
+  recsys:
+    name: recsys
+    external: true

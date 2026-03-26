@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  mlflow-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    volumes:
+      - mlflow-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 10s
+      retries: 5
+    networks:
+      - recsys
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: mlflow.Dockerfile
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://mlflow:mlflow@mlflow-db:5432/mlflow
+      MLFLOW_ARTIFACT_ROOT: /mlflow/artifacts
+    command: >
+      mlflow server
+        --backend-store-uri postgresql://mlflow:mlflow@mlflow-db:5432/mlflow
+        --default-artifact-root /mlflow/artifacts
+        --host 0.0.0.0
+        --port 5000
+    ports:
+      - "5001:5000"
+    volumes:
+      - mlflow-artifacts:/mlflow/artifacts
+    depends_on:
+      mlflow-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - recsys
+
+volumes:
+  mlflow-db-data:
+  mlflow-artifacts:
+
+networks:
+  recsys:
+    name: recsys
+    driver: bridge
