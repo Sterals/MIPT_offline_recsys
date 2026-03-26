@@ -1,0 +1,8 @@
+groups:
+  - name: control
+    model_name: popular
+    percent: 50
+
+  - name: treatment
+    model_name: popular_age
+    percent: 50
