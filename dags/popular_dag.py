@@ -67,7 +67,10 @@ def build_popular(**context):
     top.to_csv(output_path, index=False)
     print(f"[build_popular] ds={ds}, saved {len(top)} items → {output_path}")
 
-    # Всё, что возвращает callable, Airflow кладёт в XCom
+    # xcom_push — сохраняем значение с произвольным ключом
+    context["ti"].xcom_push(key="updated_at", value=ds)
+
+    # Всё, что возвращает callable, Airflow кладёт в XCom с ключом "return_value"
     return str(output_path)
 
 

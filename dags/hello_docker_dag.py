@@ -24,7 +24,7 @@ with DAG(
     default_args=default_args,
     description="Run print('Hello, World!') inside a Python Docker container",
     schedule_interval="0 10 * * *",
-    start_date=datetime(2026, 3, 26),
+    start_date=datetime(2026, 3, 25),
     catchup=False,
     tags=["demo", "docker"],
 ) as dag:

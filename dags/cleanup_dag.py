@@ -8,6 +8,7 @@ DAG: cleanup_daily
     - BashOperator — выполнение shell-команд
     - Jinja-шаблонизация — подстановка ds и макросов в shell-команды
 """
+import torch
 
 from datetime import datetime, timedelta
 
