@@ -1,5 +1,3 @@
-"""Build top-popular items for the 2-week window ending at a given date."""
-
 import argparse
 from datetime import datetime, timedelta
 from pathlib import Path

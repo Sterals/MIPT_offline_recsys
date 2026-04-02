@@ -1,5 +1,3 @@
-"""Load age-restricted top-popular CSVs into Redis."""
-
 import argparse
 import json
 import os

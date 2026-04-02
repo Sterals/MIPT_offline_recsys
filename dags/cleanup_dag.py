@@ -1,15 +1,3 @@
-"""
-DAG: cleanup_daily
-===================
-Ждёт завершения popular_daily, затем удаляет устаревшие CSV из /data.
-
-Демонстрирует:
-    - ExternalTaskSensor — ожидание завершения другого DAG
-    - BashOperator — выполнение shell-команд
-    - Jinja-шаблонизация — подстановка ds и макросов в shell-команды
-"""
-import torch
-
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -29,7 +17,7 @@ with DAG(
     dag_id="cleanup_daily",
     default_args=default_args,
     description="Wait for popular_daily, then remove stale CSVs",
-    schedule_interval="0 6 * * *",   # тот же schedule, что и у popular_daily
+    schedule_interval="0 6 * * *",   # тот же schedule, что и у popular_daily, иначе execution_delta
     start_date=datetime(2021, 6, 1),
     end_date=datetime(2021, 6, 30),
     catchup=True,
@@ -37,15 +25,7 @@ with DAG(
     tags=["recsys", "cleanup"],
 ) as dag:
 
-    # ------------------------------------------------------------------
-    # 1. ExternalTaskSensor — ждём завершения popular_daily
-    # ------------------------------------------------------------------
-    # Sensor проверяет, что DAG popular_daily успешно завершился
-    # для той же логической даты (execution_date).
-    #
-    # Важно: schedule_interval обоих DAG должен совпадать,
-    # иначе нужно использовать execution_delta или execution_date_fn
-    # для маппинга дат.
+
     wait_for_popular = ExternalTaskSensor(
         task_id="wait_for_popular_daily",
         external_dag_id="popular_daily",
@@ -57,22 +37,7 @@ with DAG(
         failed_states=["failed"],      # если popular_daily упал — сразу fail
     )
 
-    # ------------------------------------------------------------------
-    # 2. BashOperator — удаляем CSV старше RETENTION_DAYS от ds
-    # ------------------------------------------------------------------
-    # Jinja-шаблонизация: Airflow подставляет значения в {{ ... }}
-    # перед выполнением команды.
-    #
-    # Доступные шаблонные переменные:
-    #   {{ ds }}                — логическая дата, "2021-06-15"
-    #   {{ macros.ds_add(ds, -7) }} — дата минус 7 дней, "2021-06-08"
-    #   {{ params.xxx }}        — пользовательские параметры
-    #
-    # Логика скрипта:
-    #   - вычисляем дату-порог (ds - 7 дней)
-    #   - перебираем CSV-файлы top_popular_*.csv
-    #   - извлекаем дату из имени файла
-    #   - удаляем файлы с датой строго раньше порога
+
     cleanup = BashOperator(
         task_id="remove_stale_csvs",
         bash_command="""

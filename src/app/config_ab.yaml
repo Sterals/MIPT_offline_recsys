@@ -3,6 +3,6 @@ groups:
     model_name: popular
     percent: 50
 
-  - name: treatment
+  - name: test
     model_name: popular_age
     percent: 50

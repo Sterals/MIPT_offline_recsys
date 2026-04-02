@@ -1,13 +1,3 @@
-"""
-DAG: hello_docker
-==================
-Запускает Python-контейнер через DockerOperator и выполняет print("Hello, World!").
-
-Демонстрирует:
-    - DockerOperator — запуск задач в изолированном Docker-контейнере
-    - Зачем это нужно: изоляция зависимостей, воспроизводимость, безопасность
-"""
-
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -31,10 +21,10 @@ with DAG(
 
     hello = DockerOperator(
         task_id="hello_world",
-        image="python:3.11-slim",        # образ скачается автоматически при первом запуске
+        image="python:3.11-slim",                       # образ скачается автоматически при первом запуске
         command='python -c "print(\'Hello, World!\')"',
-        docker_url="unix://var/run/docker.sock",  # подключение к Docker daemon хоста
+        docker_url="unix://var/run/docker.sock",        # подключение к Docker daemon хоста
         network_mode="bridge",
-        auto_remove=False,               # удалить контейнер после завершения
-        mount_tmp_dir=False,             # не монтировать tmp — не нужен для этого таска
+        auto_remove=False,                              # удалить контейнер после завершения
+        mount_tmp_dir=False,                            # не монтировать tmp — не нужен для этого таска
     )

@@ -1,23 +1,3 @@
-"""
-DAG: popular_daily
-==================
-Считает top-popular items за скользящее окно 14 дней и загружает в Redis.
-Запускается ежедневно в 06:00, прогоняет catchup за июнь 2021.
-
-Пайплайн:
-    build_popular  →  validate  →  load_to_redis
-
-Концепции Airflow, которые здесь демонстрируются:
-    - DAG и schedule_interval (cron)
-    - PythonOperator
-    - context["ds"] — логическая дата запуска
-    - XCom — передача данных между тасками
-    - Variable — конфигурация вне кода
-    - catchup — прогон за исторические даты
-    - default_args (retries, retry_delay)
-    - Зависимости через оператор >>
-"""
-
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -32,17 +12,7 @@ DATA_DIR = Path("/opt/airflow/data")
 TOP_K = 10
 
 
-# ---------------------------------------------------------------------------
-# Task 1: Считаем top-popular
-# ---------------------------------------------------------------------------
 def build_popular(**context):
-    """
-    Берём interactions за последние 14 дней относительно ds (логической даты),
-    считаем top-K по числу уникальных пользователей, сохраняем CSV.
-
-    Возвращаемое значение автоматически попадает в XCom
-    и может быть прочитано downstream-тасками через xcom_pull.
-    """
     ds = context["ds"]  # логическая дата запуска, формат YYYY-MM-DD
     end_date = datetime.strptime(ds, "%Y-%m-%d").date()
     start_date = end_date - timedelta(days=14)
@@ -74,9 +44,6 @@ def build_popular(**context):
     return str(output_path)
 
 
-# ---------------------------------------------------------------------------
-# Task 2: Валидация результатов
-# ---------------------------------------------------------------------------
 def validate(**context):
     """
     Проверяем, что CSV корректен:
@@ -101,9 +68,6 @@ def validate(**context):
     return csv_path
 
 
-# ---------------------------------------------------------------------------
-# Task 3: Загрузка в Redis
-# ---------------------------------------------------------------------------
 def load_to_redis(**context):
     """
     Читаем CSV (путь получаем через XCom из validate),
@@ -126,9 +90,6 @@ def load_to_redis(**context):
     print(f"[load_to_redis] Loaded {len(item_ids)} items into Redis key 'popular'")
 
 
-# ---------------------------------------------------------------------------
-# DAG definition
-# ---------------------------------------------------------------------------
 default_args = {
     "owner": "recsys",
     "retries": 1,                        # при падении таска — одна повторная попытка
@@ -162,5 +123,4 @@ with DAG(
         python_callable=load_to_redis,
     )
 
-    # Задаём порядок выполнения: build → validate → load
     build >> check >> load

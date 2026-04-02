@@ -1,14 +1,3 @@
-"""
-DAG: popular_age_daily
-=======================
-Считает top-popular items по возрастным группам и загружает в Redis.
-Вычисление для каждой возрастной группы выполняется параллельно
-через Dynamic Task Mapping.
-
-Пайплайн:
-    prepare_data → build_age_group ×6 (параллельно) → validate → load_to_redis
-"""
-
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -25,15 +14,10 @@ TOP_K = 10
 
 
 def _age_to_kwargs(age):
-    """Преобразует возрастную группу в kwargs для build_age_group."""
     return {"age": age}
 
 
 def prepare_data(**context):
-    """
-    Читаем данные один раз, считаем агрегаты и сохраняем промежуточный CSV.
-    Это позволяет не читать interactions.csv в каждом параллельном таске.
-    """
     ds = context["ds"]
     end_date = datetime.strptime(ds, "%Y-%m-%d").date()
     start_date = end_date - timedelta(days=14)
@@ -86,7 +70,6 @@ def build_age_group(age, **context):
 
 
 def validate(csv_paths, **context):
-    """Проверяем что все файлы на месте и не пустые."""
     assert len(csv_paths) == len(AGE_GROUPS), (
         f"Expected {len(AGE_GROUPS)} files, got {len(csv_paths)}"
     )
@@ -147,7 +130,7 @@ with DAG(
         python_callable=prepare_data,
     )
 
-    # Dynamic Task Mapping: 6 параллельных тасков — по одному на возрастную группу
+    # Dynamic Task Mapping: 6 параллельных тасков
     build = PythonOperator.partial(
         task_id="build_age_group",
         python_callable=build_age_group,

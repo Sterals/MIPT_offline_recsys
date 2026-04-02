@@ -1,20 +1,3 @@
-"""
-DAG: error_handling_demo
-=========================
-Демонстрирует обработку ошибок через trigger_rule.
-
-Пайплайн:
-                        ┌─ on_success (trigger_rule=ALL_SUCCESS) ─┐
-    start → risky_task ─┤                                         ├─ done
-                        └─ on_failure (trigger_rule=ALL_FAILED)  ─┘
-
-Концепции:
-    - trigger_rule — запуск таска в зависимости от статуса upstream
-    - ALL_SUCCESS — только если upstream успешен (по умолчанию)
-    - ALL_FAILED — только если upstream упал
-    - NONE_FAILED_MIN_ONE_SUCCESS — финальный таск отработает в любом случае
-"""
-
 import random
 from datetime import datetime, timedelta
 
@@ -83,7 +66,14 @@ with DAG(
     # Финальный таск — выполнится в любом случае (один путь success, другой skipped)
     done = EmptyOperator(
         task_id="done",
-        trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS, # ALL_DONE
+        trigger_rule=TriggerRule.ALL_DONE, # ALL_DONE
     )
 
     start >> risky >> [success, failure] >> done
+
+"""
+    - ALL_SUCCESS — только если upstream успешен (по умолчанию)
+    - ALL_FAILED — только если upstream упал
+    - NONE_FAILED_MIN_ONE_SUCCESS — финальный таск отработает в любом случае
+    - ALL_DONE
+"""

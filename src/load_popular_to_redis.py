@@ -1,5 +1,3 @@
-"""Load top-popular items from CSV into Redis as a JSON list."""
-
 import argparse
 import json
 import os
