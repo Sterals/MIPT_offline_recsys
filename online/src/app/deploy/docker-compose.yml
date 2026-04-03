@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  online-recs-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: recsys_redis_pass
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: items
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      TRITON_URL: triton:8000
+      TRITON_MODEL_NAME: catboost_reranker
+    ports:
+      - "8002:8000"
+    restart: unless-stopped
+    networks:
+      - recsys
+
+networks:
+  recsys:
+    name: recsys
+    external: true
