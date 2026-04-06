@@ -5,14 +5,17 @@ description = ""
 authors = [
     {name = "Pimanov Daniil",email = "pimanov.d@gmail.com"}
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "numpy (>=2.4.3,<3.0.0)",
     "pandas (>=3.0.1,<4.0.0)",
     "redis (>=7.3.0,<8.0.0)",
     "scipy (>=1.17.1,<2.0.0)",
     "implicit (>=0.7.2,<0.8.0)",
-    "catboost (>=1.2.10,<2.0.0)"
+    "catboost (>=1.2.10,<2.0.0)",
+    "jupyter (>=1.1.1,<2.0.0)",
+    "qdrant-client (>=1.17.1,<2.0.0)",
+    "tritonclient (>=2.67.0,<3.0.0)"
 ]
 
 

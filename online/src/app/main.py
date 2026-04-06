@@ -50,7 +50,7 @@ CAT_FEATURES = ["age", "income", "sex", "content_type", "for_kids"]
 def startup():
     """Загружаем item эмбеддинги и reranker модель."""
     global ITEM_IDS, ITEM_EMBEDDINGS, RERANKER_MODEL
-
+    print(1)
     # Item embeddings для brute-force
     raw = redis_client.get("als:item_ids")
     if not raw:
@@ -70,16 +70,17 @@ def startup():
         ITEM_IDS = valid_ids
         ITEM_EMBEDDINGS = np.array(embeddings, dtype=np.float32)
         print(f"Loaded {len(ITEM_IDS)} item embeddings, shape: {ITEM_EMBEDDINGS.shape}")
-
+    print(2)
     # Reranker из MLflow
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     run_id = redis_client.get("reranker:mlflow_run_id")
     if run_id:
-        model_uri = f"runs:/{run_id}/reranker_model"
+        model_uri = f"models:/catboost-reranker@prod"
         RERANKER_MODEL = mlflow.catboost.load_model(model_uri)
         print(f"Loaded reranker model from {model_uri}")
     else:
         print("WARNING: reranker:mlflow_run_id not found in Redis, /recs_reranked will be unavailable")
+    print(3)
 
 
 @app.get("/health")
@@ -91,11 +92,6 @@ def health():
         "qdrant_points": info.points_count,
         "reranker_loaded": RERANKER_MODEL is not None,
     }
-
-
-# ──────────────────────────────────────────────────────────────
-# Brute-force: dot product по всем айтемам в numpy
-# ──────────────────────────────────────────────────────────────
 
 @app.get("/recs")
 def get_recs(
@@ -121,10 +117,6 @@ def get_recs(
 
     return {"user_id": user_id, "recommendations": recommendations}
 
-
-# ──────────────────────────────────────────────────────────────
-# ANN: приближённый поиск через Qdrant
-# ──────────────────────────────────────────────────────────────
 
 @app.get("/recs_ann")
 def get_recs_ann(
@@ -167,10 +159,6 @@ def get_recs_ann(
     return {"user_id": user_id, "recommendations": recommendations}
 
 
-# ──────────────────────────────────────────────────────────────
-# Similar: item-to-item через Qdrant
-# ──────────────────────────────────────────────────────────────
-
 @app.get("/similar")
 def get_similar(
     item_id: int = Query(..., description="Item ID"),
@@ -195,10 +183,6 @@ def get_similar(
 
     return {"item_id": item_id, "similar": similar}
 
-
-# ──────────────────────────────────────────────────────────────
-# Reranked: ANN-кандидаты + CatBoost reranker из MLflow
-# ──────────────────────────────────────────────────────────────
 
 DEFAULT_USER_FEATURES = {"age": "unknown", "income": "unknown", "sex": "unknown", "kids_flg": 0}
 DEFAULT_ITEM_FEATURES = {
@@ -245,9 +229,9 @@ def get_recs_reranked(
     for rank, (point, ifeat_raw) in enumerate(zip(ann_results.points, item_feats_raw)):
         item_feat = json.loads(ifeat_raw) if ifeat_raw else DEFAULT_ITEM_FEATURES
         rows.append({
-            "item_id": point.id,
-            "als_score": point.score,
-            "als_rank": rank,
+            "item_id": int(point.id),
+            "als_score": int(point.score),
+            "als_rank": int(rank),
             "title": point.payload.get("title", ""),
             "genres": point.payload.get("genres", ""),
             **user_feat,
@@ -255,7 +239,8 @@ def get_recs_reranked(
         })
 
     df = pd.DataFrame(rows)
-
+    
+    df["for_kids"] = "unknown" # Костыль. Я где то потерял преобразование типов и туда попадает float.
     # 4. Предикт реранкера
     rerank_scores = RERANKER_MODEL.predict_proba(df[FEATURE_COLS])[:, 1]
     df["rerank_score"] = rerank_scores
@@ -277,9 +262,6 @@ def get_recs_reranked(
     return {"user_id": user_id, "recommendations": recommendations}
 
 
-# ──────────────────────────────────────────────────────────────
-# Triton: ANN-кандидаты + CatBoost reranker через Triton
-# ──────────────────────────────────────────────────────────────
 
 @app.get("/recs_triton")
 def get_recs_triton(
@@ -322,6 +304,8 @@ def get_recs_triton(
             **user_feat,
             **item_feat,
         }
+
+        row['for_kids'] = 'unknown' # Костыль. Я где то потерял преобразование типов и туда попадает float.
         feature_jsons.append(json.dumps(row))
         point_meta.append({
             "item_id": point.id,
@@ -332,7 +316,6 @@ def get_recs_triton(
 
     # 4. Вызов Triton
     triton_client = tritonhttpclient.InferenceServerClient(url=TRITON_URL)
-
     input_data = np.array(feature_jsons, dtype=object)
     triton_input = tritonhttpclient.InferInput("features", input_data.shape, "BYTES")
     triton_input.set_data_from_numpy(input_data)
